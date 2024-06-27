@@ -46,12 +46,10 @@ namespace RentalChatbot
                     {
                         case "1":
                             displayCurrentCars();
-                            //ProceedToCheckout -> processPayment
-                            processPayment();
                             break;
                         case "2":
-                            Console.WriteLine("MyCart\n");
-                            //DisplayMyCart: ProceedToCheckout -> processPayment
+                            displayCart();
+                            if (purchasedCarsList.Count != 0 || purchasedTrucksList.Count != 0) promptCheckout();
                             break;
                         case "3":
                             Console.WriteLine("You've been logged out.\n");
@@ -130,6 +128,7 @@ namespace RentalChatbot
 
                     if (userNum < 1) 
                     {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Error! Please type a number between 1 - 6");
                         continueLoop = true;
                     }
@@ -149,22 +148,36 @@ namespace RentalChatbot
                     }
                     else
                     {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Error! Please type a number between 1 - 6");
                         continueLoop = true;
                     }
                 }
+
+                bool continuePrompt = true;
                 
-                string userDecision = CmdReader("\n ->Rent and add to cart? or Return to main menu? (Hint: type 'rent' or 'return')\n");
-                
-                
-                if (userDecision == "rent")
+                while (continuePrompt)
                 {
-                    addToShoppingCart(numSelected);
-                }else if (userDecision == "return")
-                {
-                    return;
+                    string userDecision = CmdReader("\n ->Rent and add to cart? or Return to main menu? (Hint: type 'rent' or 'return')\n");
+                    if (userDecision == "rent")
+                    {
+                        addToShoppingCart(numSelected);
+                        continuePrompt = false;
+                    }
+                    else if (userDecision == "return")
+                    {
+                        continuePrompt = false;
+                        break;
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("Error. Please type 'rent' or 'return'.");
+                        continuePrompt = true;
+                    }
                 }
-                //return numSelected;
+
+                
             }
 
 
@@ -184,6 +197,7 @@ namespace RentalChatbot
                     var truck = currentTrucks.Find(Truck => Truck.CarID == carId);
                     purchasedTrucksList.Add(truck);
                 }
+                promptCheckout();
             }
 
 
@@ -197,10 +211,10 @@ namespace RentalChatbot
 
 
             /// <summary>
-            /// Method for payment processing, and print Purchase Receipt
+            /// Method for prompting checkout, and print Purchase Receipt
             /// </summary>
             /// <param name="payTotal"></param>
-            public void processPayment()
+            public void promptCheckout()
             {
                 bool correctInput = false;
                 string userReply;
@@ -211,46 +225,96 @@ namespace RentalChatbot
 
                 if (userReply == "checkout")
                 {
-                    var payMethod = CmdReader($"\n ->How would you like to pay? (Hint: type {PaymentMethod.Visa}, or {PaymentMethod.MaterCard} or {PaymentMethod.PayPal}, or {PaymentMethod.ApplePay})\n");
-
-                    //Display purchased list and prompt for user confirmation:
+                    //Display purchased list
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("\nSure! Here's your car to rent: \n");
+                    displayCart();
 
-                    int paymentTotal = 0;
-                    ArrayList items = new ArrayList();
-                    if (purchasedCarsList.Count > 0)
+                    showFinalReceipt();
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+
+            /// <summary>
+            /// Method for displaying shopping cart
+            /// </summary>
+            public void displayCart()
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                if (purchasedCarsList.Count == 0 || purchasedTrucksList.Count == 0) Console.WriteLine("\nShopping Cart is currently empty.\n");
+
+                //ArrayList items = new ArrayList();
+
+                if (purchasedCarsList.Count > 0)
+                {
+                    var rentedCars = from car in purchasedCarsList
+                                     select car;
+                    foreach (var c in rentedCars)
                     {
-                        var rentedCars = from car in purchasedCarsList
-                                         select car;
-                        foreach (var c in rentedCars)
-                        {
-                            paymentTotal += c.finalTotal();
-                            items.Add(c.Make);
-                            Console.WriteLine($"{c.vehicleDetail()} \n CarID# {c.CarID} Total: ${c.finalTotal()}");
-                        }
-
+                        Console.WriteLine($"{c.vehicleDetail()} \n CarID# {c.CarID} Total: ${c.finalTotal()}");
                     }
 
-                    if (purchasedTrucksList.Count > 0)
+                }
+
+                if (purchasedTrucksList.Count > 0)
+                {
+                    var rentedTrucks = from truck in purchasedTrucksList
+                                       select truck;
+                    foreach (var t in rentedTrucks)
                     {
-                        var rentedTrucks = from truck in purchasedTrucksList
-                                           select truck;
-                        foreach (var t in rentedTrucks)
-                        {
-                            paymentTotal += t.finalTotal();
-                            items.Add(t.Make);
-                            Console.WriteLine($"{t.vehicleDetail()} \n TruckID# {t.CarID} Total: ${t.finalTotal()}");
-                        }
+                        Console.WriteLine($"{t.vehicleDetail()} \n TruckID# {t.CarID} Total: ${t.finalTotal()}");
+                    }
+                }
+
+                Console.WriteLine("\n--------------------\n");
+            }
+
+
+
+            public void showFinalReceipt()
+            {
+                //Calculate payemnt total
+                int paymentTotal = 0;
+                ArrayList items = new ArrayList();
+                if (purchasedCarsList.Count > 0)
+                {
+                    var rentedCars = from car in purchasedCarsList
+                                     select car;
+                    foreach (var c in rentedCars)
+                    {
+                        paymentTotal += c.finalTotal();
+                        items.Add(c.Make);
                     }
 
-                    string[] itemMakes = items.ToArray(typeof(string)) as string[];
+                }
 
-                    Console.WriteLine("\n--------------------\n");
-                    
+                if (purchasedTrucksList.Count > 0)
+                {
+                    var rentedTrucks = from truck in purchasedTrucksList
+                                       select truck;
+                    foreach (var t in rentedTrucks)
+                    {
+                        paymentTotal += t.finalTotal();
+                        items.Add(t.Make);
+                    }
+                }
+                string[] itemMakes = items.ToArray(typeof(string)) as string[];
+
+
+                //Show final receipt
+                bool continueLoop = true;
+
+                while (continueLoop)
+                {
                     var userComfirm = CmdReader("\n ->Confirm payment? (Hint: 'yes' or 'cancel')\n");
                     if (userComfirm == "yes")
                     {
+                        var payMethod = CmdReader($"\n ->How would you like to pay? (Hint: type {PaymentMethod.Visa}, or {PaymentMethod.MaterCard} or {PaymentMethod.PayPal}, or {PaymentMethod.ApplePay})\n");
+
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\n*************************************\n");
                         Console.WriteLine("\nTransaction Success! Here's your receipt: \n");
@@ -260,21 +324,22 @@ namespace RentalChatbot
                         Console.WriteLine("\n*************************************\n");
                         purchasedCarsList.Clear();
                         purchasedTrucksList.Clear();
+                        continueLoop = false;
+                    }
+                    else if (userComfirm == "cancel")
+                    {
+                        continueLoop = false;
+                        return;
                     }
                     else
                     {
-                        return;
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("\n Error.Please type 'yes' or 'cancel'\n");
+                        continueLoop = true;
                     }
-
                 }
-                else
-                {
-                    return;
-                }
+                    
             }
-
-
-
         }
     }
     
